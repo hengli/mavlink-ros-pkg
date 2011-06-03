@@ -25,6 +25,9 @@ export ROS_PACKAGE_PATH=~/pixhawk/mavlink-ros-pkg:$ROS_PACKAGE_PATH
 source ~/.bashrc
 # Change to the directory
 cd mavlink-ros-pkg
-rosmake lcm_mavlink_ros
+mkdir build
+cd build
+cmake -D CMAKE_BUILD_TYPE=Release ..
+make
 # Use the executables in the bin directory
 
