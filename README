@@ -28,3 +28,24 @@ cd mavlink-ros-pkg
 rosmake lcm_mavlink_ros
 # Use the executables in the bin directory
 
+USE:
+
+Two basic executables are generated:
+
+lcmtoros and rostolcm
+
+lcmtoros listens to lcm mavlink channel and forwards all received MAVLINK messages as special ROS MAVLINK messages (see msg definition) to the ROS mavlink channel. To receive the messages create a NodeHandle and subscribe to "mavlink". You can translate the ROS MAVLINK message back to a standard MAVLINK message by calling the function createMavlinkFromROS() defined in include/mavlinkros.h.
+For a example see ros_receiver_example.cpp.
+
+rostolcm listens to ROS mavlink channel and forwards all received ROS MAVLINK message to the lcm mavlink channel. The easiest way for a ROS node to sent a message to the lcm mavlink channel is therefore to create a MAVLINK message, fill in the fields, convert it with the function createROSFromMavlink() defined in include/mavlinkros.h and send it to the ROS channel "mavlink". rostolcm will then receive this message and forward it to the lcm channel.
+
+RUN:
+
+To receive MAVLINK messages inside ROS:
+
+rosrun lcm_mavlink_ros lcmtoros
+
+To send MAVLINK messages from ROS:
+
+rosrun lcm_mavlink_ros rostolcm
+
