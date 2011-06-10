@@ -37,11 +37,12 @@ void mavlinkCallback(const lcm_mavlink_ros::Mavlink::ConstPtr& mavlink_ros_msg)
 }
 
 int main(int argc, char **argv) {
-	ros::init(argc, argv, "rostolcm");
+        ros::init(argc, argv, "rosreceiver");
 	ros::NodeHandle n;
 
 	mavlink_sub = n.subscribe("mavlink", 1000, mavlinkCallback);
 
+        ROS_INFO("Started and listening...\n");
 
 	/**
 	 * Now pump callbacks (execute mavlinkCallback) until CTRL-c is pressed
