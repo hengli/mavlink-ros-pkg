@@ -1,21 +1,6 @@
 cmake_minimum_required(VERSION 2.4.6)
 include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
-SET(
-  CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake
-)
-include(cmake/FindMAVCONN.cmake)
-include(cmake/FindLCM.cmake)
-include(cmake/FindMAVLINK.cmake)
-include(cmake/FindGLIB2.cmake)
-
-
-FIND_PACKAGE(MAVCONN)
-FIND_PACKAGE(LCM)
-FIND_PACKAGE(MAVLINK  REQUIRED)
-FIND_PACKAGE(GLIB2  REQUIRED)
-FIND_PACKAGE(GTHREAD2  REQUIRED)
-
 # Set the build type.  Options are:
 #  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
 #  Debug          : w/ debug symbols, w/o optimization
@@ -31,18 +16,22 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-#uncomment if you have defined messages
 rosbuild_genmsg()
-#uncomment if you have defined services
-#rosbuild_gensrv()
 
-#common commands for building c++ executables and libraries
-#rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
-#target_link_libraries(${PROJECT_NAME} another_library)
-#rosbuild_add_boost_directories()
-#rosbuild_link_boost(${PROJECT_NAME} thread)
-#rosbuild_add_executable(example examples/example.cpp)
-#target_link_libraries(example ${PROJECT_NAME})
+#Load MAVLINK/MAVCONN specific libraries
+SET(
+  CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake
+)
+include(cmake/FindMAVCONN.cmake)
+include(cmake/FindLCM.cmake)
+include(cmake/FindMAVLINK.cmake)
+include(cmake/FindGLIB2.cmake)
+
+FIND_PACKAGE(MAVCONN)
+FIND_PACKAGE(LCM)
+FIND_PACKAGE(MAVLINK  REQUIRED)
+FIND_PACKAGE(GLIB2  REQUIRED)
+FIND_PACKAGE(GTHREAD2  REQUIRED)
 
 INCLUDE_DIRECTORIES(
   ${GLIB2_MAIN_INCLUDE_DIR}

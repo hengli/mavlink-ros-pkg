@@ -1,4 +1,7 @@
-#include "ros/ros.h"
+#include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
+#include <tf/transform_broadcaster.h>
+
 #include "lcm_mavlink_ros/Mavlink.h"
 #include <glib.h>
 #include "mavconn.h"
@@ -7,6 +10,7 @@
 #include <sstream>
 
 ros::Publisher mavlink_pub;
+ros::Publisher attitude_pub;
 
 std::string lcmurl = "udpm://"; ///< host name for UDP server
 bool verbose;
@@ -35,6 +39,30 @@ mavlink_handler (const lcm_recv_buf_t *rbuf, const char * channel,
 	 * Send the received MAVLink message to ROS (topic: mavlink, see main())
 	 */
 	mavlink_pub.publish(rosmavlink_msg);
+
+	switch(msg->msgid)
+	{
+	case MAVLINK_MSG_ID_ATTITUDE:
+		{
+			mavlink_attitude_t amsg;
+			mavlink_msg_attitude_decode(msg, &amsg);
+			sensor_msgs::Imu imu_msgs;
+			btQuaternion quat;
+			quat.setRPY(amsg.roll, amsg.pitch, amsg.yaw);
+			imu_msgs.orientation.x = quat.x();
+			imu_msgs.orientation.y = quat.y();
+			imu_msgs.orientation.z = quat.z();
+			imu_msgs.orientation.w = quat.w();
+			imu_msgs.angular_velocity.x = amsg.rollspeed;
+			imu_msgs.angular_velocity.y = amsg.pitchspeed;
+			imu_msgs.angular_velocity.z = amsg.yawspeed;
+			attitude_pub.publish(imu_msgs);
+
+			if (verbose)
+				ROS_INFO("Published Imu message (sys:%d|comp:%d):\n", msg->sysid, msg->compid);
+		}
+		break;
+	}
 }
 
 
@@ -57,7 +85,7 @@ int main(int argc, char **argv) {
 	{
 			{ "lcmurl", 'l', 0, G_OPTION_ARG_STRING, &lcmurl, "LCM Url to connect to", "udpm://" },
 			{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Be verbose", NULL },
-			{ NULL }
+			{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, 0 }
 	};
 
 	GError *error = NULL;
@@ -72,9 +100,11 @@ int main(int argc, char **argv) {
 		exit (1);
 	}
 
-	ros::NodeHandle n;
+	ros::NodeHandle mavlink_nh;
+	mavlink_pub = mavlink_nh.advertise<lcm_mavlink_ros::Mavlink> ("/fromMAVLINK", 1000);
 
-	mavlink_pub = n.advertise<lcm_mavlink_ros::Mavlink> ("mavlink", 1000);
+	ros::NodeHandle attitude_nh;
+	attitude_pub = attitude_nh.advertise<sensor_msgs::Imu>("/fromMAVLINK/Imu", 1000);
 
 	/**
 	 * Connect to LCM Channel and register for MAVLink messages
