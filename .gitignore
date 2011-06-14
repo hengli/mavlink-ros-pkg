@@ -12,6 +12,5 @@ CMakeFiles
 .cproject
 .project
 CMakeCache.txt
-Makefile
 lcm_mavlink_ros/bin/*
 lcm_mavlink_ros/msg_gen/
