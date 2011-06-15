@@ -53,5 +53,5 @@ USE:
 
 Start the node:
 
-   rosrun serial_mavlink_ros mavlink_bridge_serial
+   rosrun serial_mavlink_ros mavlink_bridge_serial -p /dev/ttyUSB0 -b 11500
 
