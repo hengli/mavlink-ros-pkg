@@ -1,14 +1,10 @@
 #include "ros/ros.h"
-
-#include "tf/transform_broadcaster.h"
-
 #include "lcm_mavlink_ros/Mavlink.h"
-#include "geometry_msgs/Pose.h"
 
 #include "mavconn.h"
 #include "mavlinkros.h"
+#include "geometry_msgs_pose_mavlink.h"
 
-#include <sstream>
 #include <glib.h>
 
 std::string lcmurl = "udpm://"; ///< host name for UDP server
@@ -53,15 +49,9 @@ void poseCallback(const geometry_msgs::Pose &pose_msg)
 	//set timestamp TODO: implement a more intelligent timestamping here...
 	uint64_t timestamp = 0;
 
-	//convert quaternion to euler angles
-	const btQuaternion quat(pose_msg.orientation.x, pose_msg.orientation.y, pose_msg.orientation.z, pose_msg.orientation.w);
-	const btMatrix3x3 mat(quat);
-	double roll, pitch, yaw;
-	mat.getEulerYPR(yaw, pitch, roll);
-
 	//send MAVLINK vision position estimate message
 	mavlink_message_t msg;
-	mavlink_msg_vision_position_estimate_pack(sysid, compid, &msg, timestamp, pose_msg.position.x, pose_msg.position.y, pose_msg.position.z, roll, pitch, yaw);
+	convertROSPoseToMavlink(sysid, compid, pose_msg, timestamp, &msg);
 	mavlink_message_t_publish(lcm, "MAVLINK", &msg);
 
 	if (verbose)
@@ -73,15 +63,9 @@ void poseStampedCallback(const geometry_msgs::PoseStamped &pose_msg)
 	//set timestamp (get NSec from ROS and convert to us)
 	uint64_t timestamp = pose_msg.header.stamp.toNSec() / 1000;
 
-	//convert quaternion to euler angles
-	const btQuaternion quat(pose_msg.pose.orientation.x, pose_msg.pose.orientation.y, pose_msg.pose.orientation.z, pose_msg.pose.orientation.w);
-	const btMatrix3x3 mat(quat);
-	double roll, pitch, yaw;
-	mat.getEulerYPR(yaw, pitch, roll);
-
 	//send MAVLINK vision position estimate message
 	mavlink_message_t msg;
-	mavlink_msg_vision_position_estimate_pack(sysid, compid, &msg, timestamp, pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z, roll, pitch, yaw);
+	convertROSPoseStampedToMavlink(sysid, compid, pose_msg, timestamp, &msg);
 	mavlink_message_t_publish(lcm, "MAVLINK", &msg);
 
 	if (verbose)

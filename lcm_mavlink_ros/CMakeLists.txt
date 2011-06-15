@@ -7,7 +7,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+set(ROS_BUILD_TYPE RelWithDebInfo)
 
 rosbuild_init()
 
@@ -18,41 +18,33 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 rosbuild_genmsg()
 
-#Load MAVLINK/MAVCONN specific libraries
+#Load MAVCONN specific libraries (for dependencies please check the MAVCONN installation tutorial)
 SET(
   CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake
 )
 include(cmake/FindMAVCONN.cmake)
-include(cmake/FindLCM.cmake)
 include(cmake/FindMAVLINK.cmake)
-include(cmake/FindGLIB2.cmake)
 
-FIND_PACKAGE(MAVCONN)
-FIND_PACKAGE(LCM)
+FIND_PACKAGE(MAVCONN REQUIRED)
 FIND_PACKAGE(MAVLINK  REQUIRED)
-FIND_PACKAGE(GLIB2  REQUIRED)
-FIND_PACKAGE(GTHREAD2  REQUIRED)
 
 INCLUDE_DIRECTORIES(
   ${GLIB2_MAIN_INCLUDE_DIR}
   ${GLIB2_INTERNAL_INCLUDE_DIR}
-  ${GTHREAD2_MAIN_INCLUDE_DIR}
   ${MAVCONN_INCLUDE_DIR}
   ${MAVLINK_INCLUDE_DIR}
-  ./include/
+  ../include/
 )
 
 rosbuild_add_executable(lcmtoros src/lcmtoros.cpp)
-target_link_libraries(lcmtoros glib-2.0 lcm mavconn_lcm)
+target_link_libraries(lcmtoros
+  mavconn_lcm
+)
 
 rosbuild_add_executable(rostolcm src/rostolcm.cpp)
-target_link_libraries(rostolcm lcm mavconn_lcm)
+target_link_libraries(rostolcm
+  mavconn_lcm
+)
 
 rosbuild_add_executable(ros_receiver_example src/ros_receiver_example.cpp)
-target_link_libraries(ros_receiver_example
-  ${GLIB2_LIBRARY})
-
-#rosbuild_add_executable(mavlink_bridge_serial src/mavlink_ros_serial.cpp)
-#target_link_libraries(mavlink_bridge_serial 
-#  ${GLIB2_LIBRARY}
-#  ${GTHREAD2_LIBRARY})
+target_link_libraries(ros_receiver_example)

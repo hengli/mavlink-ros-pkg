@@ -1,55 +1,5 @@
-MAVLINK to ROS BRIDGE
+Please read the specific REAME files in the subfolders for installation instructions of the different nodes.
 
-This ROS node allow to send and receive MAVLINK packets from either an
-autopilot board, wireless link (Ground Control Station) or from the MAVCONN/LCM
-middleware.
+lcm_mavlink_ros		ROS node that communicates with the MAVCONN middleware
 
-For help, please visit the mailing list: http://groups.google.com/group/mavlink
-
-MAVLINK is documented at:
-http://qgroundcontrol.org/mavlink/
-ROS is documented at:
-http://ros.org
-
-INSTALLATION:
-
-Assuming you're familiar with ROS:
-
-# Checkout the source code
-git clone <this repository url>
-# Add the folder to the ROS package list
-gedit ~/.bashrc
-# Add this line (ADJUST THE FOLDER!!!)
-export ROS_PACKAGE_PATH=~/pixhawk/mavlink-ros-pkg:$ROS_PACKAGE_PATH
-# Reload bash rc
-source ~/.bashrc
-# Change to the directory
-cd mavlink-ros-pkg
-
-rosmake lcm_mavlink_ros
-
-# Use the executables in the bin directory
-
-
-================================================================================
-USE:
-
-Two basic executables are generated:
-
-lcmtoros and rostolcm
-
-lcmtoros listens to lcm mavlink channel and forwards all received MAVLINK messages as special ROS MAVLINK messages (see msg definition) to the ROS mavlink channel. To receive the messages create a NodeHandle and subscribe to "mavlink". You can translate the ROS MAVLINK message back to a standard MAVLINK message by calling the function createMavlinkFromROS() defined in include/mavlinkros.h.
-For a example see ros_receiver_example.cpp.
-
-rostolcm listens to ROS mavlink channel and forwards all received ROS MAVLINK message to the lcm mavlink channel. The easiest way for a ROS node to sent a message to the lcm mavlink channel is therefore to create a MAVLINK message, fill in the fields, convert it with the function createROSFromMavlink() defined in include/mavlinkros.h and send it to the ROS channel "mavlink". rostolcm will then receive this message and forward it to the lcm channel.
-
-RUN:
-
-To receive MAVLINK messages inside ROS:
-
-rosrun lcm_mavlink_ros lcmtoros
-
-To send MAVLINK messages from ROS:
-
-rosrun lcm_mavlink_ros rostolcm
-
+serial_mavlink_ros	ROS node that directly interfaces a serial port and communicates with a MAVLINK compatible device (i.e. IMU)

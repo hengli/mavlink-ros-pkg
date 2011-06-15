@@ -1,3 +1,5 @@
+#include "mavlink.h"
+
 /**
  * Takes a ROS-Mavlink-message (mavlink_ros_msg) and converts it into a Mavlink-Message (msg)
  */
@@ -27,11 +29,4 @@ static inline void createROSFromMavlink(const mavlink_message_t* mavlink_msg, lc
 	{
 		(mavlink_ros_msg->payload).push_back(mavlink_msg->payload[i]);
 	}
-
-/*	std::vector<unsigned char> payload;
-	for (int i = 0; i < msg->len; i++)
-	{
-		payload.push_back(msg->payload[i]);
-	}
-	rosmavlink_msg.payload = payload;*/
 }

@@ -11,6 +11,13 @@ Ogre.log
 CMakeFiles
 .cproject
 .project
+.pydevproject
 CMakeCache.txt
-lcm_mavlink_ros/bin/*
-lcm_mavlink_ros/msg_gen/
+lcm_mavlink_ros/bin*
+lcm_mavlink_ros/msg_gen*
+lcm_mavlink_ros/msg/lisp*
+lcm_mavlink_ros/src/lcm_mavlink_ros*
+serial_mavlink_ros/bin*
+serial_mavlink_ros/msg_gen*
+serial_mavlink_ros/msg/lisp*
+serial_mavlink_ros/src/serial_mavlink_ros*

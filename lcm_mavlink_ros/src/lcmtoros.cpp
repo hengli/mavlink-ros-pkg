@@ -1,13 +1,11 @@
 #include <ros/ros.h>
-#include <sensor_msgs/Imu.h>
-#include <tf/transform_broadcaster.h>
 
-#include "lcm_mavlink_ros/Mavlink.h"
+#include <mavconn.h>			// MAVCONN includes (this includes MAVLINK and LCM)
 #include <glib.h>
-#include "mavconn.h"
-#include "mavlinkros.h"
 
-#include <sstream>
+#include "lcm_mavlink_ros/Mavlink.h"	// ROS message definition
+#include "mavlinkros.h"			// Helper functions to convert a MAVLINK message in to a MAVLINK-ROS message and vice versa
+#include "mavlink_attitude_ros.h"	// Helper function to convert a MAVLINK attitude message to sensor_msgs/Imu message
 
 ros::Publisher mavlink_pub;
 ros::Publisher attitude_pub;
@@ -17,9 +15,7 @@ bool verbose;
 
 lcm_t *lcm;
 
-static void
-mavlink_handler (const lcm_recv_buf_t *rbuf, const char * channel,
-		const mavlink_message_t* msg, void * user)
+static void mavlink_handler (const lcm_recv_buf_t *rbuf, const char * channel, const mavlink_message_t* msg, void * user)
 {
 	if (verbose)
 		ROS_INFO("Received message #%d on channel \"%s\" (sys:%d|comp:%d):\n", msg->msgid, channel, msg->sysid, msg->compid);
@@ -44,19 +40,9 @@ mavlink_handler (const lcm_recv_buf_t *rbuf, const char * channel,
 	{
 	case MAVLINK_MSG_ID_ATTITUDE:
 		{
-			mavlink_attitude_t amsg;
-			mavlink_msg_attitude_decode(msg, &amsg);
-			sensor_msgs::Imu imu_msgs;
-			btQuaternion quat;
-			quat.setRPY(amsg.roll, amsg.pitch, amsg.yaw);
-			imu_msgs.orientation.x = quat.x();
-			imu_msgs.orientation.y = quat.y();
-			imu_msgs.orientation.z = quat.z();
-			imu_msgs.orientation.w = quat.w();
-			imu_msgs.angular_velocity.x = amsg.rollspeed;
-			imu_msgs.angular_velocity.y = amsg.pitchspeed;
-			imu_msgs.angular_velocity.z = amsg.yawspeed;
-			attitude_pub.publish(imu_msgs);
+                        sensor_msgs::Imu imu_msg;
+                        convertMavlinkAttitudeToROS(msg, imu_msg);
+                        attitude_pub.publish(imu_msg);
 
 			if (verbose)
 				ROS_INFO("Published Imu message (sys:%d|comp:%d):\n", msg->sysid, msg->compid);
@@ -145,9 +131,7 @@ int main(int argc, char **argv) {
 	//	loop_rate.sleep();
 	//}
 
-	if (verbose) printf("Trying MAVLink unsubscribe");
 	mavlink_message_t_unsubscribe (lcm, comm_sub);
-	if (verbose) printf("Trying LCM destroy");
 	lcm_destroy (lcm);
 //	if (verbose) printf("Trying GThread Join");
 //	g_thread_join(lcm_thread);

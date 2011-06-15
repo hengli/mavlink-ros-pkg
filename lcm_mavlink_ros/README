@@ -1,0 +1,83 @@
+LCM MAVLINK to ROS BRIDGE
+
+This ROS node allows to send and receive MAVLINK packets from the
+MAVCONN/LCM middleware.
+
+For help, please visit http://github.com/pixhawk/mavlink-ros-pkg/issues
+
+MAVLINK is documented at:
+http://qgroundcontrol.org/mavlink/
+ROS is documented at:
+http://ros.org
+
+================================================================================
+INSTALLATION:
+================================================================================
+
+Since this ROS node communicates with the MAVCONN middleware the main dependency
+is the MAVCONN library. Follow the instructions at:
+
+  http://pixhawk.ethz.ch/wiki/software/mavconn/start
+
+Please note your project folder you want to use (the standard folder in the
+installation instructions is ~/mav in the next steps it is assumed that you
+used the same directory. Please change the paths accordingly if you used
+a different path).
+
+# Checkout the source code (if you don't want to fork on github.com
+  use git@github.com:pixhawk/mavlink-ros-pkg)
+
+   cd ~/mav
+   git clone <this repository url>
+
+# Add the folder to the ROS package list
+
+   gedit ~/.bashrc
+
+# Add this line (ADJUST THE FOLDER!)
+
+   export ROS_PACKAGE_PATH=~/mav/mavlink-ros-pkg:$ROS_PACKAGE_PATH
+
+# Reload bash rc
+
+   source ~/.bashrc
+
+# Build the package with rosmake
+
+   rosmake lcm_mavlink_ros
+
+
+================================================================================
+USE:
+================================================================================
+
+Two basic executables are generated:
+
+lcmtoros and rostolcm
+
+lcmtoros listens to lcm mavlink channel and forwards all received MAVLINK
+messages as special ROS MAVLINK messages (see msg definition) to the ROS mavlink
+channel. To receive the messages create a NodeHandle and subscribe to "mavlink".
+You can translate the ROS MAVLINK message back to a standard MAVLINK message by
+calling the function createMavlinkFromROS() defined in include/mavlinkros.h.
+For a example see ros_receiver_example.cpp.
+
+rostolcm listens to ROS mavlink channel and forwards all received ROS MAVLINK
+message to the lcm mavlink channel. The easiest way for a ROS node to sent a
+message to the lcm mavlink channel is therefore to create a MAVLINK message,
+fill in the fields, convert it with the function createROSFromMavlink() defined
+in include/mavlinkros.h and send it to the ROS channel "mavlink". rostolcm will
+then receive this message and forward it to the lcm channel.
+
+================================================================================
+RUN:
+================================================================================
+
+To receive MAVLINK messages inside ROS:
+
+   rosrun lcm_mavlink_ros lcmtoros
+
+To send MAVLINK messages from ROS:
+
+   rosrun lcm_mavlink_ros rostolcm
+

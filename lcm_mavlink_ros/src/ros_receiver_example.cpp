@@ -2,12 +2,9 @@
 #include "mavlink.h"
 #include "lcm_mavlink_ros/Mavlink.h"
 #include "mavlinkros.h"
-#include <sstream>
-
-bool verbose;
 
 /**
- * Grabs all mavlink-messages from the ROS-Topic "mavlink" and prints them
+ * Grabs all ROS-MAVLINK-messages from the ROS-Topic "/fromMAVLINK" and prints them
  */
 
 ros::Subscriber mavlink_sub;
@@ -23,7 +20,6 @@ void mavlinkCallback(const lcm_mavlink_ros::Mavlink::ConstPtr& mavlink_ros_msg)
 	createMavlinkFromROS(mavlink_ros_msg,&msg);
 
 	// We now have the message decoded and and can act on it
-	
 	switch (msg.msgid) {
 		case MAVLINK_MSG_ID_HEARTBEAT:
 			ROS_INFO("HEARTBEAT from system %i",msg.sysid);
@@ -31,7 +27,6 @@ void mavlinkCallback(const lcm_mavlink_ros::Mavlink::ConstPtr& mavlink_ros_msg)
 		default:
 			break;
 	}
-	
 
 	ROS_INFO("Received Mavlink from ROS, Message-ID: [%i]", mavlink_ros_msg->msgid);
 }
@@ -40,7 +35,7 @@ int main(int argc, char **argv) {
         ros::init(argc, argv, "rosreceiver");
 	ros::NodeHandle n;
 
-	mavlink_sub = n.subscribe("mavlink", 1000, mavlinkCallback);
+        mavlink_sub = n.subscribe("/fromMAVLINK", 1000, mavlinkCallback);
 
         ROS_INFO("Started and listening...\n");
 
