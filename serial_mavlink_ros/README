@@ -1,0 +1,57 @@
+SERIAL MAVLINK to ROS BRIDGE
+
+This ROS node allows to send and receive MAVLINK packets through a serial interface.
+
+For help, please visit http://github.com/pixhawk/mavlink-ros-pkg/issues
+
+MAVLINK is documented at:
+http://qgroundcontrol.org/mavlink/
+ROS is documented at:
+http://ros.org
+
+================================================================================
+INSTALLATION:
+================================================================================
+
+This ROS node depends on the glib library. Install it with:
+
+  sudo apt-get install libglib2.0-dev
+
+Additionally, you need the header only MAVLINK library.
+The build script assumes it to reside in the same parent directoy as the ROS
+package. Choose a directory path and download the MAVLINK library:
+
+  mkdir ~/project_folder
+  cd ~/project_folder
+  git clone git@github.com:pixhawk/mavlink
+
+# Checkout the source code (if you don't want to fork on github.com
+  use git@github.com:pixhawk/mavlink-ros-pkg)
+
+   git clone <this repository url>
+
+# Add the folder to the ROS package list
+
+   gedit ~/.bashrc
+
+# Add this line (ADJUST THE FOLDER!)
+
+   export ROS_PACKAGE_PATH=~/project_folder/mavlink-ros-pkg:$ROS_PACKAGE_PATH
+
+# Reload bash rc
+
+   source ~/.bashrc
+
+# Build the package with rosmake
+
+   rosmake serial_mavlink_ros
+
+
+================================================================================
+USE:
+================================================================================
+
+Start the node:
+
+   rosrun serial_mavlink_ros mavlink_bridge_serial
+
