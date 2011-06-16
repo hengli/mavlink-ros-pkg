@@ -37,10 +37,10 @@
 
 #include "ros/ros.h"
 
+#include "serial_mavlink_ros/Mavlink.h"
+#include "mavlink_attitude_ros.h"
+
 #include "mavlink.h"
-#include "lcm_mavlink_ros/Mavlink.h"
-#include "mavlinkros.h"
-#include <sstream>
 #include <glib.h>
 
 // Standard includes
@@ -74,12 +74,12 @@ struct timeval tv;		  ///< System time
 int baud = 115200;                 ///< The serial baud rate
 
 // Settings
-int systemid = 42;             ///< The unique system id of this MAV, 0-127. Has to be consistent across the system
+int sysid = 42;             ///< The unique system id of this MAV, 0-127. Has to be consistent across the system
 int compid = 110;
 int serial_compid = 0;
 std::string port = "/dev/ttyUSB0";              ///< The serial port name, e.g. /dev/ttyUSB0
 bool silent = false;              ///< Wether console output should be enabled
-bool verbose = true;             ///< Enable verbose output
+bool verbose = false;             ///< Enable verbose output
 bool debug = false;               ///< Enable debug functions and output
 bool pc2serial = true;			  ///< Enable PC to serial push mode (send more stuff from pc over serial)
 int fd;
@@ -321,8 +321,19 @@ void* serial_wait(void* serial_ptr)
 			/**
 			 * Serialize the Mavlink-ROS-message
 			 */
-			lcm_mavlink_ros::Mavlink rosmavlink_msg;
-			createROSFromMavlink(&message,&rosmavlink_msg);
+			serial_mavlink_ros::Mavlink rosmavlink_msg;
+
+			rosmavlink_msg.len = message.len;
+			rosmavlink_msg.seq = message.seq;
+			rosmavlink_msg.sysid = message.sysid;
+			rosmavlink_msg.compid = message.compid;
+			rosmavlink_msg.msgid = message.msgid;
+			rosmavlink_msg.fromlcm = false;
+
+			for (int i = 0; i < message.len; i++)
+			{
+				(rosmavlink_msg.payload).push_back(message.payload[i]);
+			}
 			
 			/**
 			 * Mark the ROS-Message as coming not from LCM
@@ -334,7 +345,7 @@ void* serial_wait(void* serial_ptr)
 			 */
 			mavlink_pub.publish(rosmavlink_msg);
 
-			switch(msg->msgid)
+			switch(message.msgid)
 			{
 			case MAVLINK_MSG_ID_ATTITUDE:
 				{
@@ -353,22 +364,27 @@ void* serial_wait(void* serial_ptr)
 }
 
 
-void mavlinkCallback(const lcm_mavlink_ros::Mavlink::ConstPtr& mavlink_ros_msg)
+void mavlinkCallback(const serial_mavlink_ros::Mavlink &mavlink_ros_msg)
 {
 	//Check if the message is coming from lcm so that it is not send back
-	if (mavlink_ros_msg->fromlcm)
+	if (mavlink_ros_msg.fromlcm)
 		return;
 
 	/**
-	 * Convert lcm_mavlink_ros::Mavlink to mavlink_message_t
+	 * Convert serial_mavlink_ros::Mavlink to mavlink_message_t
 	 */
 	mavlink_message_t msg;
-	createMavlinkFromROS(mavlink_ros_msg,&msg);
+	msg.msgid = mavlink_ros_msg.msgid;
+
+	//Copy payload from mavlink_msg (from ROS) to the new "real" mavlink message
+	copy(mavlink_ros_msg.payload.begin(), mavlink_ros_msg.payload.end(), msg.payload);
+
+	mavlink_finalize_message(&msg, mavlink_ros_msg.sysid, mavlink_ros_msg.compid, mavlink_ros_msg.len);
 
 	/**
 	 * Send mavlink_message to LCM (so that the rest of the MAVConn world can hear us)
 	 */
-	if (verbose) ROS_INFO("Sent Mavlink from ROS to LCM, Message-ID: [%i]", mavlink_ros_msg->msgid);
+	if (verbose) ROS_INFO("Sent Mavlink from ROS to LCM, Message-ID: [%i]", mavlink_ros_msg.msgid);
 
 	// Send message over serial port
 	static uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
@@ -389,8 +405,9 @@ int main(int argc, char **argv) {
 			{ "baudrate", 'b', 0, G_OPTION_ARG_INT, &baud, "Baudrate", "115200" },
 			{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Be verbose", NULL },
 			{ "debug", 'd', 0, G_OPTION_ARG_NONE, &debug, "Debug output", NULL },
-			{ "system", 's', 0, G_OPTION_ARG_NONE, &systemid, "Select MAVLink ID of the system", "42" },
-			{ NULL }
+			{ "sysid", 'a', 0, G_OPTION_ARG_INT, &sysid, "ID of this system, 1-255", "42" },
+			{ "compid", 'c', 0, G_OPTION_ARG_INT, &compid, "ID of this component, 1-255", "199" },
+			{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, 0 }
 	};
 
 	GError *error = NULL;
@@ -409,7 +426,7 @@ int main(int argc, char **argv) {
 	// SETUP ROS
 	ros::NodeHandle n;
 	mavlink_sub = n.subscribe("/toMAVLINK", 1000, mavlinkCallback);
-	mavlink_pub = n.advertise<lcm_mavlink_ros::Mavlink> ("/fromMAVLINK", 1000);
+	mavlink_pub = n.advertise<serial_mavlink_ros::Mavlink> ("/fromMAVLINK", 1000);
 	ros::NodeHandle attitude_nh;
 	attitude_pub = attitude_nh.advertise<sensor_msgs::Imu>("/fromMAVLINK/Imu", 1000);
 
@@ -478,7 +495,7 @@ int main(int argc, char **argv) {
 	}
 	
 	// Ready to roll
-	printf("\nMAVLINK SERIAL TO ROS BRIDGE STARTED ON MAV %d (COMPONENT ID:%d) - RUNNING..\n\n", systemid, compid);
+	printf("\nMAVLINK SERIAL TO ROS BRIDGE STARTED ON MAV %d (COMPONENT ID:%d) - RUNNING..\n\n", sysid, compid);
 	
 
 	/**

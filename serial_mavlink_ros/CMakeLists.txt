@@ -38,7 +38,7 @@ INCLUDE_DIRECTORIES(
   ../include/
 )
 
-rosbuild_add_executable(mavlink_bridge_serial src/serial_mavlink_ros.cpp)
+rosbuild_add_executable(mavlink_bridge_serial src/mavlink_ros_serial.cpp)
 target_link_libraries(mavlink_bridge_serial
   ${GLIB2_LIBRARY}
   ${GTHREAD2_LIBRARY}
