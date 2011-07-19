@@ -12,9 +12,9 @@ int sysid = 42;
 int compid = 199;
 
 /**
- * Grabs all mavlink_waypoint_t messages from MAVLINK and publishes the
- * corresponding asctec_hl_comm::WaypointActionGoal messages to the
- * ROS topic "fcu/waypoint/goal".
+ * Grabs all mavlink_local_position_setpoint_set_t messages from MAVLINK and
+ * publishes the corresponding asctec_hl_comm::WaypointActionGoal messages to
+ * the ROS topic "fcu/waypoint/goal".
  * Grabs all geometry_msgs/PoseStamped messages from ROS and publishes the
  * corresponding messages to MAVLINK.
  */
@@ -232,8 +232,8 @@ mavlinkHandler(const lcm_recv_buf_t* rbuf, const char* channel,
 {
 	switch (msg->msgid)
 	{
-		// get waypoint from MAVLINK
-		case MAVLINK_MSG_ID_WAYPOINT:
+		// get setpoint from MAVLINK
+		case MAVLINK_MSG_ID_LOCAL_POSITION_SETPOINT_SET:
 		{
 			ros::Publisher* waypointPub = reinterpret_cast<ros::Publisher*>(user);
 			
@@ -249,21 +249,21 @@ mavlinkHandler(const lcm_recv_buf_t* rbuf, const char* channel,
 			
 			lltoutm(originLatitude, originLongitude, originUtmX, originUtmY, originUtmZone);
 			
-			mavlink_waypoint_t wp;
-			mavlink_msg_waypoint_decode(msg, &wp);
+			mavlink_local_position_setpoint_set_t setpoint;
+			mavlink_msg_local_position_setpoint_set_decode(msg, &setpoint);
 			
-			// get waypoint location (in GPS coordinates)
-			double waypointLatitude = wp.x;
-			double waypointLongitude = wp.y;
-			double waypointAltitude = wp.z;
+			// get setpoint location (in GPS coordinates)
+			double setpointLatitude = setpoint.x;
+			double setpointLongitude = setpoint.y;
+			double setpointAltitude = setpoint.z;
 			
-			// compute waypoint location (in UTM coordinates)
-			double waypointUtmX, waypointUtmY;
-			std::string waypointUtmZone;
+			// compute setpoint location (in UTM coordinates)
+			double setpointUtmX, setpointUtmY;
+			std::string setpointUtmZone;
 			
-			lltoutm(waypointLatitude, waypointLongitude, waypointUtmX, waypointUtmY, waypointUtmZone);
+			lltoutm(setpointLatitude, setpointLongitude, setpointUtmX, setpointUtmY, setpointUtmZone);
 			
-			if (originUtmZone.compare(waypointUtmZone) != 0)
+			if (originUtmZone.compare(setpointUtmZone) != 0)
 			{
 				break;
 			}
@@ -271,14 +271,14 @@ mavlinkHandler(const lcm_recv_buf_t* rbuf, const char* channel,
 			// publish goal to ROS
 			asctec_hl_comm::WaypointActionGoal goal;
 			goal.goal_id.stamp = ros::Time::now();
-			goal.goal.goal_pos.x = waypointUtmX - originUtmX;
-			goal.goal.goal_pos.y = waypointUtmX - originUtmY;
-			goal.goal.goal_pos.z = originAltitude - waypointAltitude;
-			goal.goal.goal_yaw = wp.param4;
+			goal.goal.goal_pos.x = setpointUtmX - originUtmX;
+			goal.goal.goal_pos.y = setpointUtmX - originUtmY;
+			goal.goal.goal_pos.z = originAltitude - setpointAltitude;
+			goal.goal.goal_yaw = setpoint.yaw;
 			goal.goal.max_speed.x = 2.0f;
 			goal.goal.max_speed.y = 2.0f;
 			goal.goal.max_speed.z = 2.0f;
-			goal.goal.accuracy_position = wp.param1;
+			goal.goal.accuracy_position = 0.25f;
 			goal.goal.accuracy_orientation = 0.1f;
 			goal.goal.timeout = 10.0f;
 			
