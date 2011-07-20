@@ -38,7 +38,36 @@ INCLUDE_DIRECTORIES(
   ../include/
 )
 
+SET(PKG asctec_hl_comm)
+EXECUTE_PROCESS(COMMAND rospack find ${PKG}
+                OUTPUT_VARIABLE PKG_PATH)
+
+IF (NOT ${PKG_PATH} STREQUAL "")
+
+EXECUTE_PROCESS(COMMAND rospack cflags-only-I ${PKG}
+                OUTPUT_VARIABLE PKG_INCLUDE_DIRS
+		OUTPUT_STRIP_TRAILING_WHITESPACE)
+EXECUTE_PROCESS(COMMAND rospack libs-only-L ${PKG}
+                OUTPUT_VARIABLE PKG_LIBRARY_DIRS
+		OUTPUT_STRIP_TRAILING_WHITESPACE)
+EXECUTE_PROCESS(COMMAND rospack libs-only-l -q ${PKG}
+                OUTPUT_VARIABLE PKG_LIBRARIES
+		OUTPUT_STRIP_TRAILING_WHITESPACE)
+string(REPLACE " " ";" PKG_INCLUDE_DIRS ${PKG_INCLUDE_DIRS})
+string(REPLACE " " ";" PKG_LIBRARY_DIRS ${PKG_LIBRARY_DIRS})
+string(REPLACE " " ";" PKG_LIBRARIES ${PKG_LIBRARIES})
+
+INCLUDE_DIRECTORIES(${PKG_INCLUDE_DIRS})
+
 rosbuild_add_executable(mavconn_asctec_bridge src/mavconn_asctec_bridge.cpp)
-target_link_libraries(mavconn_asctec_bridge
+
+LINK_DIRECTORIES(
+  ${PKG_LIBRARY_DIRS}
+)
+TARGET_LINK_LIBRARIES(mavconn_asctec_bridge
+  ${PKG_LIBRARIES}
   mavconn_lcm
 )
+
+ENDIF (NOT ${PKG_PATH} STREQUAL "")
+

@@ -13,7 +13,6 @@
   <depend package="sensor_msgs"/>
   <depend package="roscpp"/>
   <depend package="tf"/>
-  <depend package="asctec_hl_comm"/>
 
 </package>
 
