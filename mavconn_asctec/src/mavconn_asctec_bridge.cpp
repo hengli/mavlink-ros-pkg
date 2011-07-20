@@ -20,10 +20,15 @@ int compid = 199;
  * corresponding messages to MAVLINK.
  */
 
+ros::NodeHandle* nh = 0;
 lcm_t *lcm = 0;
 
 const double WGS84_A = 6378137.0;
 const double WGS84_ECCSQ = 0.00669437999013;
+
+double homeLatitude = 0.0;
+double homeLongitude = 0.0;
+double homeAltitude = 0.0;
 
 char
 utmLetterDesignator(double latitude)
@@ -244,6 +249,49 @@ poseStampedCallback(const geometry_msgs::PoseStamped& poseStampedMsg)
 }
 
 void
+paramCheckCallback(const ros::TimerEvent&)
+{
+	bool homeShift = false;
+
+	double latitude;
+	if (nh->getParamCached("/gps_ref_latitude", latitude) &&
+		latitude != homeLatitude)
+	{
+		homeLatitude = latitude;
+		homeShift = true;
+	}
+
+	double longitude;
+	if (nh->getParamCached("/gps_ref_longitude", longitude) &&
+		longitude != homeLongitude)
+	{
+		homeLongitude = longitude;
+		homeShift = true;
+	}
+
+	double altitude;
+	if (nh->getParamCached("/gps_ref_altitude", altitude) &&
+		altitude != homeAltitude)
+	{
+		homeAltitude = altitude;
+		homeShift = true;
+	}
+
+	if (homeShift)
+	{
+		mavlink_message_t msg;
+		mavlink_msg_gps_local_origin_set_pack(sysid, compid, &msg,
+				homeLatitude, homeLongitude, homeAltitude);
+		mavlink_message_t_publish(lcm, "MAVLINK", &msg);
+
+		if (verbose)
+		{
+			ROS_INFO("Sent Mavlink GPS local origin set message.");
+		}
+	}
+}
+
+void
 mavlinkHandler(const lcm_recv_buf_t* rbuf, const char* channel,
 			   const mavlink_message_t* msg, void* user)
 {
@@ -280,60 +328,6 @@ mavlinkHandler(const lcm_recv_buf_t* rbuf, const char* channel,
 
 			break;
 		}
-		// get setpoint from MAVLINK
-//		case MAVLINK_MSG_ID_GLOBAL_POSITION_SETPOINT_SET:
-//		{
-//			ros::Publisher* waypointPub = reinterpret_cast<ros::Publisher*>(user);
-//
-//			// get origin location (in GPS coordinates)
-//			double originLatitude, originLongitude, originAltitude;
-//			nh.getParamCached("/gps_ref_latitude", originLatitude);
-//			nh.getParamCached("/gps_ref_longitude", originLongitude);
-//			nh.getParamCached("/gps_ref_altitude", originAltitude);
-//
-//			// compute origin location (in UTM coordinates)
-//			double originUtmX, originUtmY;
-//			std::string originUtmZone;
-//
-//			lltoutm(originLatitude, originLongitude, originUtmX, originUtmY, originUtmZone);
-//
-//			mavlink_local_position_setpoint_set_t setpoint;
-//			mavlink_msg_local_position_setpoint_set_decode(msg, &setpoint);
-//
-//			// get setpoint location (in GPS coordinates)
-//			double setpointLatitude = setpoint.x;
-//			double setpointLongitude = setpoint.y;
-//			double setpointAltitude = setpoint.z;
-//
-//			// compute setpoint location (in UTM coordinates)
-//			double setpointUtmX, setpointUtmY;
-//			std::string setpointUtmZone;
-//
-//			lltoutm(setpointLatitude, setpointLongitude, setpointUtmX, setpointUtmY, setpointUtmZone);
-//
-//			if (originUtmZone.compare(setpointUtmZone) != 0)
-//			{
-//				break;
-//			}
-//
-//			// publish goal to ROS
-//			asctec_hl_comm::WaypointActionGoal goal;
-//			goal.goal_id.stamp = ros::Time::now();
-//			goal.goal.goal_pos.x = setpointUtmX - originUtmX;
-//			goal.goal.goal_pos.y = setpointUtmX - originUtmY;
-//			goal.goal.goal_pos.z = originAltitude - setpointAltitude;
-//			goal.goal.goal_yaw = setpoint.yaw;
-//			goal.goal.max_speed.x = 2.0f;
-//			goal.goal.max_speed.y = 2.0f;
-//			goal.goal.max_speed.z = 2.0f;
-//			goal.goal.accuracy_position = 0.25f;
-//			goal.goal.accuracy_orientation = 0.1f;
-//			goal.goal.timeout = 10.0f;
-//
-//			waypointPub->publish(goal);
-//
-//			break;
-//		}
 		default: {}
 	};
 }
@@ -361,10 +355,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	ros::NodeHandle nh;
-	ros::Subscriber poseStampedSub = nh.subscribe("fcu/current_pose", 10, poseStampedCallback);
-	ros::Publisher waypointPub = nh.advertise<asctec_hl_comm::WaypointActionGoal>("fcu/waypoint/goal", 10);
+	nh = new ros::NodeHandle;
+	ros::Subscriber poseStampedSub = nh->subscribe("fcu/current_pose", 10, poseStampedCallback);
+	ros::Publisher waypointPub = nh->advertise<asctec_hl_comm::WaypointActionGoal>("fcu/waypoint/goal", 10);
 	
+	// check for changed parameters on parameter server
+	ros::Timer paramCheckTimer = nh->createTimer(ros::Duration(2.0), paramCheckCallback);
+
 	/**
 	 * Connect to LCM Channel and register for MAVLink messages ->
 	 */
@@ -380,12 +377,32 @@ int main(int argc, char **argv)
 	// start thread(s) to listen for ROS messages
 	ros::AsyncSpinner spinner(1);
 	spinner.start();
-	
+
+	// listen for LCM messages
+	int lcm_fd = lcm_get_fileno(lcm);
+
+	// wait a limited amount of time for an incoming LCM message
+	struct timeval timeout = {
+		1,	// seconds
+		0	// microseconds
+	};
+
 	while (ros::ok())
 	{
-		// listen for LCM messages
-		lcm_handle(lcm);
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(lcm_fd, &fds);
+
+		int status = select(lcm_fd + 1, &fds, 0, 0, &timeout);
+
+		if (status != 0 && FD_ISSET(lcm_fd, &fds) && ros::isShuttingDown())
+		{
+			// LCM has events ready to be processed.
+			lcm_handle(lcm);
+		}
 	}
+
+	delete nh;
 
 	mavlink_message_t_unsubscribe(lcm, mavlinkSub);
 	lcm_destroy(lcm);
